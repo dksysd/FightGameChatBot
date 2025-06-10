@@ -1,0 +1,77 @@
+# Git 관련 파일
+.git
+.gitignore
+README.md
+.gitattributes
+
+# 문서 파일
+*.md
+docs/
+*.txt
+
+# IDE 및 에디터 설정 파일
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS 생성 파일
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 로그 파일
+*.log
+logs/
+
+# 의존성 디렉토리
+node_modules/
+bower_components/
+
+# 빌드 출력물
+dist/
+build/
+out/
+target/
+
+# 테스트 관련
+coverage/
+.nyc_output
+*.lcov
+
+# 환경 변수 파일
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 임시 파일
+*.tmp
+*.temp
+.cache/
+
+# 패키지 관리자 잠금 파일 (선택적)
+package-lock.json
+yarn.lock
+
+# Docker 관련
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# CI/CD 설정
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# 기타 설정 파일
+.editorconfig
+.eslintrc*
+.prettierrc*
