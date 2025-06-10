@@ -1,9 +1,9 @@
 services:
-  fight_game_chatbot_service:
+  fight-game-chatbot-service:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: fight_game_chatbot
+    container_name: fight-game-chatbot
     ports:
       - "50051:50051"
     env_file:
