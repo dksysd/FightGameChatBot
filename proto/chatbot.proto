@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package chatbot;
+
+option go_package = "chatbot";
+
+// 캐릭터 채팅 서비스
+service CharacterChatService {
+    // 세션 초기화
+    rpc InitSession(InitSessionRequest) returns (InitSessionResponse);
+
+    // 채팅 대화
+    rpc Chat(ChatRequest) returns (ChatResponse);
+
+    // 게임 상태 분석
+    rpc AnalyzeGameState(AnalysisRequest) returns (AnalysisResponse);
+
+    // 세션 종료
+    rpc EndSession(EndSessionRequest) returns (EndSessionResponse);
+
+    // 활성 세션 목록 조회
+    rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+
+    // 스트림 채팅 (실시간)
+    rpc StreamChat(stream ChatRequest) returns (stream ChatResponse);
+}
+
+// 세션 초기화 요청
+message InitSessionRequest {
+    string session_id = 1;
+    string character_role = 2;  // "바르곤", "나크티스", "카게츠"
+    string opponent_role = 3;   // "바르곤", "나크티스", "카게츠"
+    string language = 4;        // "korean", "english"
+}
+
+// 세션 초기화 응답
+message InitSessionResponse {
+    bool success = 1;
+    string session_id = 2;
+    string error_message = 3;
+}
+
+// 채팅 요청
+message ChatRequest {
+    string session_id = 1;
+    string user_message = 2;
+}
+
+// 채팅 응답
+message ChatResponse {
+    string speech = 1;
+    string emotion = 2;
+    bool success = 3;
+    string error_message = 4;
+}
+
+// 게임 상태 분석 요청
+message AnalysisRequest {
+    string session_id = 1;
+    string opponent_actions = 2;
+}
+
+// 게임 상태 분석 응답
+message AnalysisResponse {
+    string analysis = 1;
+    bool success = 2;
+    string error_message = 3;
+}
+
+// 세션 종료 요청
+message EndSessionRequest {
+    string session_id = 1;
+}
+
+// 세션 종료 응답
+message EndSessionResponse {
+    bool success = 1;
+    string error_message = 2;
+}
+
+// 활성 세션 목록 요청
+message ListSessionsRequest {
+    // empty
+}
+
+// 활성 세션 목록 응답
+message ListSessionsResponse {
+    repeated string session_ids = 1;
+}
