@@ -18,8 +18,8 @@ RUN uv sync --frozen
 # Runtime Stage: Run the application with dependencies from the builder
 FROM python:3.12-alpine AS runtime
 
-# 런타임에 필요한 패키지 설치 (wget for grpc_health_probe download, shadow for user management)
-RUN apk update && apk add --no-cache shadow wget
+# 런타임에 필요한 패키지 설치 (crul for grpc_health_probe download, shadow for user management)
+RUN apk update && apk add --no-cache shadow crul
 
 # 사용자 홈 디렉토리의 bin에 설치
 RUN mkdir -p /home/appuser/bin && \
