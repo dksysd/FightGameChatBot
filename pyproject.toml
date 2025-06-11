@@ -1,5 +1,5 @@
 [project]
-name = "fightgamecharbot"
+name = "fightgamechatbot"
 version = "0.1.0"
 description = "Chat bot for fight game using llm"
 requires-python = ">=3.12"

@@ -18,15 +18,20 @@ RUN uv sync --frozen
 # Runtime Stage: Run the application with dependencies from the builder
 FROM python:3.12-alpine AS runtime
 
+# 런타임에 필요한 패키지 설치 (wget for grpc_health_probe download, shadow for user management)
+RUN apk update && apk add --no-cache shadow wget
+
+# grpc_health_probe 다운로드 및 설치
+RUN wget -qO /usr/local/bin/grpc_health_probe \
+    https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.19/grpc_health_probe-linux-amd64 \
+    && chmod +x /usr/local/bin/grpc_health_probe
+
 # 빌더에서 설치된 가상 환경 복사
 COPY --from=builder /app/.venv /app/.venv
 
 # 가상 환경의 bin 디렉토리를 PATH에 추가
 # 이렇게 하면 '.venv/bin/' 안의 'python' 실행 파일과 설치된 패키지 실행 파일들을 직접 사용할 수 있습니다.
 ENV PATH="/app/.venv/bin:$PATH"
-
-# 비root 사용자 생성을 위해 shadow 패키지 설치 (비교적 작음)
-RUN apk update && apk add --no-cache shadow
 
 # 비root 사용자 생성
 RUN groupadd -r appuser && useradd -r -g appuser -m appuser

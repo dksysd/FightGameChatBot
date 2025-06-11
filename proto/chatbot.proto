@@ -25,6 +25,31 @@ service CharacterChatService {
     rpc StreamChat(stream ChatRequest) returns (stream ChatResponse);
 }
 
+// Health Service - 서비스 상태 관리
+service Health {
+    // 단일 health check
+    rpc Check(HealthCheckRequest) returns (HealthCheckResponse);
+
+    // 스트리밍 health check (선택사항)
+    rpc Watch(HealthCheckRequest) returns (stream HealthCheckResponse);
+}
+
+// Health Check 요청
+message HealthCheckRequest {
+    string service = 1;  // 빈 문자열이면 전체 서비스, "chatbot.CharacterChatService"면 해당 서비스
+}
+
+// Health Check 응답
+message HealthCheckResponse {
+    enum ServingStatus {
+        UNKNOWN = 0;
+        SERVING = 1;
+        NOT_SERVING = 2;
+        SERVICE_UNKNOWN = 3;  // 요청한 서비스를 찾을 수 없음
+    }
+    ServingStatus status = 1;
+}
+
 // 세션 초기화 요청
 message InitSessionRequest {
     string session_id = 1;

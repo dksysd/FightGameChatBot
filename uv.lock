@@ -117,7 +117,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fightgamecharbot"
+name = "fightgamechatbot"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

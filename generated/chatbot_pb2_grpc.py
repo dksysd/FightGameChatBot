@@ -319,3 +319,123 @@ class CharacterChatService(object):
             timeout,
             metadata,
             _registered_method=True)
+
+
+class HealthStub(object):
+    """Health Service - 서비스 상태 관리
+    """
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.Check = channel.unary_unary(
+                '/chatbot.Health/Check',
+                request_serializer=chatbot__pb2.HealthCheckRequest.SerializeToString,
+                response_deserializer=chatbot__pb2.HealthCheckResponse.FromString,
+                _registered_method=True)
+        self.Watch = channel.unary_stream(
+                '/chatbot.Health/Watch',
+                request_serializer=chatbot__pb2.HealthCheckRequest.SerializeToString,
+                response_deserializer=chatbot__pb2.HealthCheckResponse.FromString,
+                _registered_method=True)
+
+
+class HealthServicer(object):
+    """Health Service - 서비스 상태 관리
+    """
+
+    def Check(self, request, context):
+        """단일 health check
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Watch(self, request, context):
+        """스트리밍 health check (선택사항)
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+
+def add_HealthServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+            'Check': grpc.unary_unary_rpc_method_handler(
+                    servicer.Check,
+                    request_deserializer=chatbot__pb2.HealthCheckRequest.FromString,
+                    response_serializer=chatbot__pb2.HealthCheckResponse.SerializeToString,
+            ),
+            'Watch': grpc.unary_stream_rpc_method_handler(
+                    servicer.Watch,
+                    request_deserializer=chatbot__pb2.HealthCheckRequest.FromString,
+                    response_serializer=chatbot__pb2.HealthCheckResponse.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'chatbot.Health', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+    server.add_registered_method_handlers('chatbot.Health', rpc_method_handlers)
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Health(object):
+    """Health Service - 서비스 상태 관리
+    """
+
+    @staticmethod
+    def Check(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/chatbot.Health/Check',
+            chatbot__pb2.HealthCheckRequest.SerializeToString,
+            chatbot__pb2.HealthCheckResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Watch(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/chatbot.Health/Watch',
+            chatbot__pb2.HealthCheckRequest.SerializeToString,
+            chatbot__pb2.HealthCheckResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)

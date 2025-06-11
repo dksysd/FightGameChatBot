@@ -1,20 +1,96 @@
+import logging
 import asyncio
 import logging
 import signal
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from typing import Dict
 
 import grpc
 from grpc import aio
-
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from core.session_manager import SessionManager
+from generated import chatbot_pb2, chatbot_pb2_grpc
 from services.character_chat_service import CharacterChatServicer
 from utils.config import Config
 
+
 # 실제 protobuf 사용 시 임포트
-from generated import chatbot_pb2_grpc
+
+class HealthServicer(chatbot_pb2_grpc.HealthServicer):
+    """별도 Health Service 구현"""
+
+    def __init__(self):
+        self._status_map: Dict[str, chatbot_pb2.HealthCheckResponse.ServingStatus] = {}
+        self._watchers: Dict[str, list] = {}
+
+    def set_status(self, service: str, status: chatbot_pb2.HealthCheckResponse.ServingStatus):
+        """서비스 상태 설정"""
+        self._status_map[service] = status
+
+        # 해당 서비스를 watching하는 클라이언트들에게 알림
+        if service in self._watchers:
+            for queue in self._watchers[service]:
+                try:
+                    queue.put_nowait(chatbot_pb2.HealthCheckResponse(status=status))
+                except:
+                    pass  # 큐가 가득 찬 경우 무시
+
+    async def Check(self, request, context):
+        """단일 health check"""
+        try:
+            service = request.service
+
+            if service in self._status_map:
+                status = self._status_map[service]
+            elif service == "":
+                # 전체 서비스 상태 - 모든 서비스가 SERVING이면 SERVING
+                if all(s == chatbot_pb2.HealthCheckResponse.SERVING
+                       for s in self._status_map.values()):
+                    status = chatbot_pb2.HealthCheckResponse.SERVING
+                else:
+                    status = chatbot_pb2.HealthCheckResponse.NOT_SERVING
+            else:
+                status = chatbot_pb2.HealthCheckResponse.SERVICE_UNKNOWN
+
+            return chatbot_pb2.HealthCheckResponse(status=status)
+
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Health check failed: {str(e)}")
+            return chatbot_pb2.HealthCheckResponse(
+                status=chatbot_pb2.HealthCheckResponse.NOT_SERVING
+            )
+
+    async def Watch(self, request, context):
+        """스트리밍 health check"""
+        service = request.service
+        queue = asyncio.Queue()
+
+        # 현재 상태를 먼저 전송
+        current_status = self._status_map.get(service,
+                                              chatbot_pb2.HealthCheckResponse.SERVICE_UNKNOWN)
+        yield chatbot_pb2.HealthCheckResponse(status=current_status)
+
+        # 새로운 watcher 등록
+        if service not in self._watchers:
+            self._watchers[service] = []
+        self._watchers[service].append(queue)
+
+        try:
+            while True:
+                response = await queue.get()
+                yield response
+        except grpc.RpcError:
+            pass  # 클라이언트 연결 종료
+        finally:
+            # watcher 제거
+            if service in self._watchers:
+                try:
+                    self._watchers[service].remove(queue)
+                except ValueError:
+                    pass
 
 
 class GRPCServer:
