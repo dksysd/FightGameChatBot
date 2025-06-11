@@ -21,11 +21,17 @@ FROM python:3.12-alpine AS runtime
 # 런타임에 필요한 패키지 설치 (wget for grpc_health_probe download, shadow for user management)
 RUN apk update && apk add --no-cache shadow wget
 
-# grpc_health_probe 다운로드 및 설치
-RUN wget -qO /usr/local/bin/grpc_health_probe \
-    https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.19/grpc_health_probe-linux-amd64 \
-    && chmod +x /usr/local/bin/grpc_health_probe
+# 사용자 홈 디렉토리의 bin에 설치
+RUN mkdir -p /home/appuser/bin && \
+    cd /tmp && \
+    curl -L -o grpc_health_probe \
+    https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.24/grpc_health_probe-linux-amd64 && \
+    chmod +x grpc_health_probe && \
+    mv grpc_health_probe /home/appuser/bin/ && \
+    chown appuser:appuser /home/appuser/bin/grpc_health_probe
 
+# PATH에 추가
+ENV PATH="/home/appuser/bin:/app/.venv/bin:$PATH"
 # 빌더에서 설치된 가상 환경 복사
 COPY --from=builder /app/.venv /app/.venv
 
