@@ -1,4 +1,3 @@
-import logging
 import asyncio
 import logging
 import signal
@@ -8,15 +7,16 @@ from typing import Dict
 
 import grpc
 from grpc import aio
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from core.session_manager import SessionManager
-from generated import chatbot_pb2, chatbot_pb2_grpc
 from services.character_chat_service import CharacterChatServicer
 from utils.config import Config
 
-
 # 실제 protobuf 사용 시 임포트
+from generated import chatbot_pb2, chatbot_pb2_grpc
+
 
 class HealthServicer(chatbot_pb2_grpc.HealthServicer):
     """별도 Health Service 구현"""
@@ -101,6 +101,8 @@ class GRPCServer:
         self.max_workers = max_workers
         self.server = None
         self.session_manager = None
+        self.health_servicer = None
+        self._shutdown_event = asyncio.Event()
 
         # 로깅 설정
         logging.basicConfig(
@@ -154,8 +156,8 @@ class GRPCServer:
             # 종료 시그널 핸들러 설정
             self._setup_signal_handlers()
 
-            # 서버 대기
-            await self.server.wait_for_termination()
+            # 종료 이벤트 대기
+            await self._shutdown_event.wait()
 
         except Exception as e:
             self.logger.error(f"서버 시작 실패: {e}")
@@ -165,9 +167,13 @@ class GRPCServer:
                 self.health_servicer.set_status("chatbot.CharacterChatService",
                                                 chatbot_pb2.HealthCheckResponse.NOT_SERVING)
             raise
+        finally:
+            await self._cleanup()
 
     async def stop(self):
         """서버 종료"""
+        self.logger.info("서버 종료를 시작합니다...")
+
         # Health 상태를 NOT_SERVING으로 설정
         if self.health_servicer:
             self.health_servicer.set_status("", chatbot_pb2.HealthCheckResponse.NOT_SERVING)
@@ -175,14 +181,39 @@ class GRPCServer:
                                             chatbot_pb2.HealthCheckResponse.NOT_SERVING)
             self.logger.info("Health check 상태가 NOT_SERVING으로 설정되었습니다.")
 
+        # 종료 이벤트 설정
+        self._shutdown_event.set()
+
+    async def _cleanup(self):
+        """정리 작업"""
         if self.server:
             self.logger.info("gRPC 서버를 종료합니다...")
-            await self.server.stop(grace=5.0)
+            try:
+                await self.server.stop(grace=5.0)
+            except Exception as e:
+                self.logger.error(f"서버 종료 중 오류: {e}")
 
         if self.session_manager:
-            self.session_manager.shutdown()
+            try:
+                self.session_manager.shutdown()
+            except Exception as e:
+                self.logger.error(f"세션 매니저 종료 중 오류: {e}")
 
         self.logger.info("서버 종료 완료")
+
+    def _setup_signal_handlers(self):
+        """시그널 핸들러 설정"""
+        def signal_handler(signum, frame):
+            self.logger.info(f"종료 시그널 수신: {signum}")
+            # 비동기 방식으로 종료 처리
+            asyncio.create_task(self.stop())
+
+        # Docker 환경에서 주로 사용되는 시그널들
+        for sig in [signal.SIGTERM, signal.SIGINT]:
+            try:
+                signal.signal(sig, signal_handler)
+            except (OSError, ValueError) as e:
+                self.logger.warning(f"시그널 {sig} 핸들러 설정 실패: {e}")
 
 
 class TestGRPCServer:
@@ -304,7 +335,16 @@ async def main():
             await server.start()
         except KeyboardInterrupt:
             await server.stop()
+        except Exception as e:
+            logging.error(f"서버 실행 중 오류: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logging.info("서버가 사용자에 의해 중단되었습니다.")
+    except Exception as e:
+        logging.error(f"애플리케이션 실행 중 오류: {e}")
+        sys.exit(1)
