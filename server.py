@@ -128,10 +128,12 @@ class GRPCServer:
             # gRPC 서버 생성
             self.server = aio.server(ThreadPoolExecutor(max_workers=self.max_workers))
 
-            # 서비스 등록
-            service_impl = CharacterChatServicer(self.session_manager)
+            # Health Service 설정
+            self.health_servicer = HealthServicer()
+            chatbot_pb2_grpc.add_HealthServicer_to_server(self.health_servicer, self.server)
 
-            # 실제 protobuf 사용 시:
+            # 메인 서비스 등록
+            service_impl = CharacterChatServicer(self.session_manager)
             chatbot_pb2_grpc.add_CharacterChatServiceServicer_to_server(service_impl, self.server)
 
             # 리스닝 포트 설정
@@ -142,6 +144,13 @@ class GRPCServer:
             await self.server.start()
             self.logger.info(f"gRPC 서버가 {listen_addr}에서 시작되었습니다.")
 
+            # Health 상태를 SERVING으로 설정
+            self.health_servicer.set_status("", chatbot_pb2.HealthCheckResponse.SERVING)
+            self.health_servicer.set_status("chatbot.CharacterChatService",
+                                            chatbot_pb2.HealthCheckResponse.SERVING)
+
+            self.logger.info("Health check 상태가 SERVING으로 설정되었습니다.")
+
             # 종료 시그널 핸들러 설정
             self._setup_signal_handlers()
 
@@ -150,6 +159,11 @@ class GRPCServer:
 
         except Exception as e:
             self.logger.error(f"서버 시작 실패: {e}")
+            # 오류 발생 시 NOT_SERVING으로 설정
+            if self.health_servicer:
+                self.health_servicer.set_status("", chatbot_pb2.HealthCheckResponse.NOT_SERVING)
+                self.health_servicer.set_status("chatbot.CharacterChatService",
+                                                chatbot_pb2.HealthCheckResponse.NOT_SERVING)
             raise
 
     async def stop(self):
