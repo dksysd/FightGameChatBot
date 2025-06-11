@@ -168,6 +168,13 @@ class GRPCServer:
 
     async def stop(self):
         """서버 종료"""
+        # Health 상태를 NOT_SERVING으로 설정
+        if self.health_servicer:
+            self.health_servicer.set_status("", chatbot_pb2.HealthCheckResponse.NOT_SERVING)
+            self.health_servicer.set_status("chatbot.CharacterChatService",
+                                            chatbot_pb2.HealthCheckResponse.NOT_SERVING)
+            self.logger.info("Health check 상태가 NOT_SERVING으로 설정되었습니다.")
+
         if self.server:
             self.logger.info("gRPC 서버를 종료합니다...")
             await self.server.stop(grace=5.0)
@@ -176,15 +183,6 @@ class GRPCServer:
             self.session_manager.shutdown()
 
         self.logger.info("서버 종료 완료")
-
-    def _setup_signal_handlers(self):
-        """시그널 핸들러 설정"""
-        def signal_handler(signum, frame):
-            self.logger.info(f"종료 시그널 수신: {signum}")
-            asyncio.create_task(self.stop())
-
-        signal.signal(signal.SIGTERM, signal_handler)
-        signal.signal(signal.SIGINT, signal_handler)
 
 
 class TestGRPCServer:
