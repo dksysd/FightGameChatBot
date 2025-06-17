@@ -16,13 +16,7 @@ RUN uv sync --frozen
 FROM python:3.12-alpine AS runtime
 
 # 런타임에 필요한 패키지 설치
-RUN apk update && apk add --no-cache shadow curl
-
-# grpc_health_probe를 시스템 경로에 설치 (권한 문제 없음)
-RUN curl -L -o /usr/local/bin/grpc_health_probe \
-    https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.24/grpc_health_probe-linux-amd64 && \
-    chmod +x /usr/local/bin/grpc_health_probe && \
-    grpc_health_probe --version
+RUN apk update && apk add --no-cache shadow
 
 # 빌더에서 설치된 가상 환경 복사
 COPY --from=builder /app/.venv /app/.venv
@@ -35,6 +29,9 @@ RUN groupadd -r appuser && useradd -r -g appuser -m appuser
 
 WORKDIR /app
 COPY . .
+
+# Health check 스크립트 복사
+COPY health_check.py .
 
 # 애플리케이션 코드 소유권을 비root 사용자로 변경
 RUN chown -R appuser:appuser /app
